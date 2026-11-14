@@ -1,9 +1,11 @@
 ---
 title: "Air Quality Analysis at RDU Airport (2018–2020)"
-author: "Your Name"
+author: "Jiaxiang Xue"
 date: "`r Sys.Date()`"
 output: word_document
 ---
+
+**GitHub Repository:** [BIOS721 Project 2](https://github.com/LeslieXue/biostats721-project2)
 
 ```{r setup, include=FALSE}
 library(tidyverse)
