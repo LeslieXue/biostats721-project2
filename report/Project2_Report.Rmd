@@ -195,6 +195,7 @@ ggplot(
     panel.grid.minor = element_blank()
   )
 ```
+
 CO and O3 are displayed in separate panels with independent y-axis scales because their concentrations differ substantially in magnitude. This allows the monthly patterns of both pollutants to be clearly visualized while retaining their original units.
 
 ```{r pm25-summary}
@@ -245,6 +246,7 @@ ggplot(
     panel.grid.minor = element_blank()
   )
 ```
+
 A line plot with points was chosen to clearly show monthly trends in PM2.5 concentrations and facilitate comparisons across years.
 
 ## Interpretation
@@ -255,4 +257,4 @@ PM2.5 showed more variable monthly patterns across years, and 2020 had the highe
 However, comparisons involving 2020 should be interpreted cautiously because only January through April data were available, and some months, such as September 2018, had fewer valid observations.
 
 ## AI Use Statement
-I used ChatGPT to help develop and debug R code, improve the presentation of tables and plots. I first organized the analysis workflow, and then wrote pseudocode, reviewed and understood the suggested code, ran it in RStudio, and checked the cleaned data and results, to ensure the results were reasonable and met the project requirements.Than I wrote the interpretation and let ChatGPT to improve it.
+I used ChatGPT to help develop and debug R code, improve the presentation of tables and plots. I first organized the analysis workflow, and then wrote pseudocode, reviewed and understood the suggested code, ran it in RStudio, and checked the cleaned data and results, to ensure the results were reasonable and met the project requirements.Then I wrote the interpretation and used ChatGPT to improve it.
