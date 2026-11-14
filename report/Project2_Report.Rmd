@@ -1,0 +1,256 @@
+---
+title: "Air Quality Analysis at RDU Airport (2018–2020)"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(knitr)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+
+source(here::here("R", "02_clean_data.R"))
+
+clean_2018 <- clean_air_quality(
+  here::here("data", "raw", "AQ_2018.csv")
+)
+
+clean_2019 <- clean_air_quality(
+  here::here("data", "raw", "AQ_2019.csv")
+)
+
+clean_2020 <- clean_air_quality(
+  here::here("data", "raw", "AQ_2020.csv")
+)
+
+aq_clean <- bind_rows(
+  clean_2018, clean_2019, clean_2020
+) %>%
+  mutate(
+    year = year(date),
+    month = month(date)
+  )
+```
+
+```{r}
+# Calculate minimum and maximum daily concentrations
+summary_table <- aq_clean %>%
+  pivot_longer(
+    cols = c(co, pm25, o3),
+    names_to = "pollutant",
+    values_to = "concentration"
+  ) %>%
+  group_by(year, pollutant) %>%
+  summarise(
+    minimum = min(concentration, na.rm = TRUE),
+    maximum = max(concentration, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    pollutant = factor(
+      pollutant,
+      levels = c("co", "pm25", "o3"),
+      labels = c("CO (ppm)", "PM2.5 (µg/m³)", "O3 (ppm)")
+    )
+  ) %>%
+  arrange(year, pollutant)
+```
+
+## Minimum and Maximum Daily Pollutant Concentrations
+
+```{r table-2018}
+summary_table %>%
+  filter(year == 2018) %>%
+  select(
+    Pollutant = pollutant,
+    Minimum = minimum,
+    Maximum = maximum
+  ) %>%
+  mutate(
+    across(
+      c(Minimum, Maximum),
+      ~ sprintf("%.3f", .x)
+    )
+  ) %>%
+  knitr::kable(
+    caption = "Table 1. Minimum and Maximum Daily Pollutant Concentrations in 2018"
+  )
+```
+
+```{r table-2019}
+summary_table %>%
+  filter(year == 2019) %>%
+  select(
+    Pollutant = pollutant,
+    Minimum = minimum,
+    Maximum = maximum
+  ) %>%
+  mutate(
+    across(
+      c(Minimum, Maximum),
+      ~ sprintf("%.3f", .x)
+    )
+  ) %>%
+  knitr::kable(
+    caption = "Table 2. Minimum and Maximum Daily Pollutant Concentrations in 2019"
+  )
+```
+
+```{r table-2020}
+summary_table %>%
+  filter(year == 2020) %>%
+  select(
+    Pollutant = pollutant,
+    Minimum = minimum,
+    Maximum = maximum
+  ) %>%
+  mutate(
+    across(
+      c(Minimum, Maximum),
+      ~ sprintf("%.3f", .x)
+    )
+  ) %>%
+  knitr::kable(
+    caption = "Table 3. Minimum and Maximum Daily Pollutant Concentrations in 2020"
+  )
+```
+
+```{r monthly-summary}
+# Calculate monthly means and 95% confidence intervals
+
+monthly_summary <- aq_clean %>%
+  select(month, co, o3) %>%
+  pivot_longer(
+    cols = c(co, o3),
+    names_to = "pollutant",
+    values_to = "concentration"
+  ) %>%
+  group_by(month, pollutant) %>%
+  summarise(
+    n = sum(!is.na(concentration)),
+    mean = mean(concentration, na.rm = TRUE),
+    s = sd(concentration, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    se = s / sqrt(n),
+    lower = mean - 1.96 * se,
+    upper = mean + 1.96 * se,
+    month = factor(
+      month,
+      levels = 1:12,
+      labels = month.abb
+    ),
+    pollutant = recode(
+      pollutant,
+      co = "CO (ppm)",
+      o3 = "O3 (ppm)"
+    )
+  )
+```
+
+## Plot 1: Monthly CO and O3 Concentrations
+
+```{r plot-1, fig.width=8, fig.height=6}
+ggplot(
+  monthly_summary,
+  aes(x = month, y = mean, color = pollutant)
+) +
+  geom_errorbar(
+    aes(ymin = lower, ymax = upper),
+    width = 0.2,
+    linewidth = 0.6
+  ) +
+  geom_point(size = 2.5) +
+  facet_wrap(
+    ~ pollutant,
+    scales = "free_y",
+    ncol = 1
+  ) +
+  scale_color_manual(
+    values = c(
+      "CO (ppm)" = "#1B9E77",
+      "O3 (ppm)" = "#7570B3"
+    )
+  ) +
+  labs(
+    title = "Monthly CO and O3 Concentrations (2018–2020)",
+    subtitle = "Pooled daily means with 95% confidence intervals",
+    x = "Month",
+    y = "Mean daily concentration (ppm)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+```
+CO and O3 are displayed in separate panels with independent y-axis scales because their concentrations differ substantially in magnitude. This allows the monthly patterns of both pollutants to be clearly visualized while retaining their original units.
+
+```{r pm25-summary}
+# Calculate monthly mean PM2.5 for each year
+
+pm25_summary <- aq_clean %>%
+  group_by(year, month) %>%
+  summarise(
+    n = sum(!is.na(pm25)),
+    mean_pm25 = mean(pm25, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    month = factor(
+      month,
+      levels = 1:12,
+      labels = month.abb
+    ),
+    year = factor(year)
+  )
+```
+
+## Plot 2: Monthly PM2.5 Concentrations by Year
+
+```{r plot-2, fig.width=8, fig.height=4.5}
+ggplot(
+  pm25_summary,
+  aes(
+    x = month,
+    y = mean_pm25,
+    color = year,
+    group = year
+  )
+) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2.5) +
+  scale_color_brewer(palette = "Dark2") +
+  labs(
+    title = "Monthly PM2.5 Concentrations by Year",
+    subtitle = "Mean daily concentrations, 2018–2020",
+    x = "Month",
+    y = expression("Mean PM"[2.5] * " concentration (" * mu * "g/m"^3 * ")"),
+    color = "Year"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+A line plot with points was chosen to clearly show monthly trends in PM2.5 concentrations and facilitate comparisons across years.
+
+## Interpretation
+Monthly CO concentrations were generally higher in winter and lower in summer, while O3 showed the opposite seasonal pattern, with higher concentrations in warmer months.
+
+PM2.5 showed more variable monthly patterns across years, and 2020 had the highest observed daily PM2.5 maximum.
+
+However, comparisons involving 2020 should be interpreted cautiously because only January through April data were available, and some months, such as September 2018, had fewer valid observations.
+
+## AI Use Statement
+I used ChatGPT to help develop and debug R code, improve the presentation of tables and plots. I first organized the analysis workflow, and then wrote pseudocode, reviewed and understood the suggested code, ran it in RStudio, and checked the cleaned data and results, to ensure the results were reasonable and met the project requirements.Than I wrote the interpretation and let ChatGPT to improve it.
